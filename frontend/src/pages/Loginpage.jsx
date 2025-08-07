@@ -88,4 +88,4 @@ setLoading(false);
   )
 }
 
-export default Loginpage
+export default Loginpage;
