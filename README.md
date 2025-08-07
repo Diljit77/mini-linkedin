@@ -23,9 +23,9 @@ This is a full-stack social media-style application built using **Vite + React**
 ## ✨ Features
 
 - User Authentication (Login / Register)
-- Create, View, and Delete Posts
+- Create, View, and Delete Posts 
 - User Profiles with Profile Picture
-- Like / Comment system *(optional)*
+- send a request to other user
 - Responsive Design
 
 ---
