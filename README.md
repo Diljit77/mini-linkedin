@@ -1,4 +1,4 @@
-# Mini-Likden (Full-Stack App)
+# Mini-Linkedin (Full-Stack App)
 
 This is a full-stack social media-style application built using **Vite + React** for the frontend and **Node.js + Express + MongoDB** for the backend.
 
