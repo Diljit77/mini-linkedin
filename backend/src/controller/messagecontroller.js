@@ -7,7 +7,7 @@ export const saveMessage = async (req, res) => {
   try {
     const { receiverId, content, gifUrl, mediaType: clientMediaType } = req.body;
     const sender = req.user._id;
-
+console.log(content);
     let mediaUrl = null;
     let finalMediaType = null;
 

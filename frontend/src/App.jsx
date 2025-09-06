@@ -15,11 +15,15 @@ import ActivityPage from './pages/Activitypage'
 import EditProfilePage from './components/EditprofileModal'
 import ChatPage from './pages/ChatPage'
 import OtherUserProfile from './pages/OtherUserpage'
+import { useEffect } from 'react'
+import { useAuthStore } from './store/userAuthStore'
 
 
 function App() {
-
-
+  const { refreshUser } = useAuthStore();
+useEffect(() => {
+refreshUser();
+})
   return (
     <>
       <Toaster position="top-right" reverseOrder={false} />

@@ -1,8 +1,33 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { currentUser, getuserpost, getUserProfile } from "../utils/api";
-import { MapPin, Calendar, Mail, Link as LinkIcon, ArrowLeft, RefreshCw, UserX } from "lucide-react";
+import { 
+  currentUser, 
+  getuserpost, 
+  getUserProfile, 
+  Sendrequest, 
+  getAcceptedConnections,
+  getSentRequests,
+  acceptConnectionRequest,
+  getReceivedRequests
+} from "../utils/api";
+import { 
+  MapPin, 
+  Calendar, 
+  Mail, 
+  Link as LinkIcon, 
+  ArrowLeft, 
+  RefreshCw, 
+  UserX, 
+  MessageSquare, 
+  UserCheck, 
+  UserPlus,
+  Check,
+  X
+} from "lucide-react";
 import { useThemeStore } from "../store/useThemeStore";
+
+import toast from "react-hot-toast";
+import { useAuthStore } from "../store/userAuthStore";
 
 const OtherUserProfile = () => {
   const { id } = useParams();
@@ -13,7 +38,10 @@ const OtherUserProfile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [debugInfo, setDebugInfo] = useState({});
+  const [connectionStatus, setConnectionStatus] = useState("not_connected"); 
+  const [receivedRequestId, setReceivedRequestId] = useState(null);
   const { theme } = useThemeStore();
+  const { user: authUser } = useAuthStore();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -21,10 +49,13 @@ const OtherUserProfile = () => {
         setIsLoading(true);
         setError(null);
 
-        const [user, profile, post] = await Promise.all([
+        const [user, profile, post, connections, sentRequests, receivedRequests] = await Promise.all([
           currentUser(),
           getUserProfile(id),
-          getuserpost(id)
+          getuserpost(id),
+          getAcceptedConnections(),
+          getSentRequests(),
+          getReceivedRequests ? getReceivedRequests() : Promise.resolve([])
         ]);
 
         setCurrentUserData(user);
@@ -32,6 +63,42 @@ const OtherUserProfile = () => {
 
         if (profile && (profile._id || profile.id)) {
           setProfileUser(profile);
+        
+          const isConnected = connections.some(
+            conn => conn._id === profile._id || conn.id === profile._id || 
+                   conn._id === profile.id || conn.id === profile.id
+          );
+          
+          if (isConnected) {
+            setConnectionStatus("connected");
+          } else {
+       
+            const hasSentRequest = sentRequests.some(
+              req => req.receiverId === profile._id || req.receiverId === profile.id || 
+                     req.receiver._id === profile._id || req.receiver._id === profile.id
+            );
+            
+            if (hasSentRequest) {
+              setConnectionStatus("pending");
+            } else {
+          
+              if (receivedRequests && receivedRequests.length > 0) {
+                const receivedRequest = receivedRequests.find(
+                  req => req.senderId === profile._id || req.senderId === profile.id || 
+                         req.sender._id === profile._id || req.sender._id === profile.id
+                );
+                
+                if (receivedRequest) {
+                  setConnectionStatus("received_request");
+                  setReceivedRequestId(receivedRequest._id || receivedRequest.id);
+                } else {
+                  setConnectionStatus("not_connected");
+                }
+              } else {
+                setConnectionStatus("not_connected");
+              }
+            }
+          }
         } else {
           setError("User profile data is invalid or empty");
           setProfileUser(null);
@@ -46,6 +113,32 @@ const OtherUserProfile = () => {
 
     fetchData();
   }, [id]);
+
+  const handleConnect = async () => {
+    try {
+      await Sendrequest(profileUser._id || profileUser.id);
+      setConnectionStatus("pending");
+      toast.success("Connection request sent!");
+    } catch (error) {
+      console.error("Failed to send connection request:", error);
+      toast.error(error.response?.data?.message || "Failed to send connection request");
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    try {
+      await acceptConnectionRequest(receivedRequestId);
+      setConnectionStatus("connected");
+      toast.success("Connection request accepted!");
+    } catch (error) {
+      console.error("Failed to accept connection request:", error);
+      toast.error(error.response?.data?.message || "Failed to accept connection request");
+    }
+  };
+
+  const handleMessage = () => {
+    navigate(`/message`);
+  };
 
   const retryFetch = async () => {
     setError(null);
@@ -115,9 +208,9 @@ const OtherUserProfile = () => {
 
   return (
     <div data-theme={theme} className="max-w-6xl mx-auto px-4 py-6">
-      {/* Profile Header */}
+    
       <div className="rounded-lg shadow-md p-6 mb-6 flex flex-col md:flex-row items-center md:items-start gap-6">
-        {/* Profile Picture */}
+  
         <div className="avatar">
           <div className="w-32 h-32 rounded-full ring-4 ring-base-100">
             <img
@@ -128,7 +221,7 @@ const OtherUserProfile = () => {
           </div>
         </div>
 
-        {/* User Info */}
+
         <div className="flex-1">
           <h1 className="text-3xl font-bold">{profileUser.name}</h1>
           <p className="text-lg opacity-70 mt-1">{profileUser.title || "Full Stack Developer"}</p>
@@ -139,14 +232,14 @@ const OtherUserProfile = () => {
           </div>
 
           <div className="flex flex-wrap gap-4 text-sm mt-4">
-         {profileUser.location && (
-  <div className="flex items-center gap-1">
-    <MapPin size={16} />
-    {typeof profileUser.location === "object"
-      ? `${profileUser.location.city}, ${profileUser.location.country}`
-      : profileUser.location}
-  </div>
-)}
+            {profileUser.location && (
+              <div className="flex items-center gap-1">
+                <MapPin size={16} />
+                {typeof profileUser.location === "object"
+                  ? `${profileUser.location.city}, ${profileUser.location.country}`
+                  : profileUser.location}
+              </div>
+            )}
 
             {profileUser.email && (
               <div className="flex items-center gap-1"><Mail size={16} /> {profileUser.email}</div>
@@ -165,16 +258,41 @@ const OtherUserProfile = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
+     
         {currentUserData?._id !== profileUser._id && (
-          <div className="flex gap-2">
-            <button className="btn btn-primary">Message</button>
-            <button className="btn btn-outline">Connect</button>
+          <div className="flex gap-2 flex-wrap justify-center">
+            {connectionStatus === "connected" ? (
+              <>
+                <button className="btn btn-primary" onClick={handleMessage}>
+                  <MessageSquare size={18} className="mr-2" /> Message
+                </button>
+                <button className="btn btn-outline" disabled>
+                  <UserCheck size={18} className="mr-2" /> Connected
+                </button>
+              </>
+            ) : connectionStatus === "pending" ? (
+              <button className="btn btn-outline" disabled>
+                <UserPlus size={18} className="mr-2" /> Request Sent
+              </button>
+            ) : connectionStatus === "received_request" ? (
+              <div className="flex gap-2">
+                <button className="btn btn-primary" onClick={handleAcceptRequest}>
+                  <Check size={18} className="mr-2" /> Accept
+                </button>
+                <button className="btn btn-outline">
+                  <X size={18} className="mr-2" /> Decline
+                </button>
+              </div>
+            ) : (
+              <button className="btn btn-primary" onClick={handleConnect}>
+                <UserPlus size={18} className="mr-2" /> Connect
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* About */}
+
       {profileUser.about && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">About</h2>
@@ -182,7 +300,6 @@ const OtherUserProfile = () => {
         </div>
       )}
 
-      {/* Experience */}
       {profileUser.experience?.length > 0 && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Experience</h2>
@@ -197,7 +314,7 @@ const OtherUserProfile = () => {
         </div>
       )}
 
-      {/* Education */}
+ 
       {profileUser.education?.length > 0 && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Education</h2>
@@ -211,7 +328,6 @@ const OtherUserProfile = () => {
         </div>
       )}
 
-      {/* Skills */}
       {profileUser.skills?.length > 0 && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Skills</h2>
@@ -223,7 +339,7 @@ const OtherUserProfile = () => {
         </div>
       )}
 
-      {/* Recent Activity */}
+     
       <div className="rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
         {posts?.length > 0 ? (
@@ -233,9 +349,9 @@ const OtherUserProfile = () => {
               <div className="flex items-center gap-2 mt-2 text-sm opacity-60">
                 <span>{new Date(post.createdAt).toLocaleDateString()}</span>
                 <span>•</span>
-                <span>{post.likes || 0} likes</span>
+                <span>{post.likeCount || 0} likes</span>
                 <span>•</span>
-                <span>{post.comments || 0} comments</span>
+                <span>{post.commentCount || 0} comments</span>
               </div>
             </div>
           ))

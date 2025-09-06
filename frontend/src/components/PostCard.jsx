@@ -3,9 +3,9 @@ import { DeleteIcon, EditIcon, X, Heart, MessageCircle, MoreHorizontal, Send, Re
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useThemeStore } from "../store/useThemeStore";
 import toast from "react-hot-toast";
-import { deletepost, toggleLike, getComments, addComment, toggleLikeComment, updateComment, deleteComment, sharePost, connectedUsers } from "../utils/api";
+import { deletepost, toggleLike, getComments, addComment, toggleLikeComment, updateComment, deleteComment, sharePost, connectedUsers, currentUser } from "../utils/api";
 import { useEffect,useState } from "react";
-import { FiShare, FiX, FiMessageCircle, FiSend, FiMail } from "react-icons/fi";
+import {  FiX,  } from "react-icons/fi";
 import { FaWhatsapp, FaLinkedin, FaFacebook, FaTwitter, FaTelegram, FaEnvelope } from "react-icons/fa";
 
 
@@ -253,7 +253,7 @@ function ShareModal({ isOpen, onClose, post, currentUserData }) {
             </div>
           </div>
 
-          {/* Copy link */}
+ 
           <div>
             <h4 className="font-semibold mb-3">Copy Link</h4>
             <div className="flex gap-2">
@@ -552,7 +552,7 @@ function PostCard({ post, onCommentCountChange, isHighlighted = false }) {
   const [commentsPage, setCommentsPage] = useState(1);
   const [showShareModal, setShowShareModal] = useState(false);
 
-  // Load current user data
+
   useEffect(() => {
     const loadCurrentUser = async () => {
       try {

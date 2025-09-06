@@ -1,4 +1,4 @@
-// store/useAuthStore.js
+
 import { create } from "zustand";
 import { currentUser } from "../utils/api"; // ✅ your API call to /api/auth/me
 

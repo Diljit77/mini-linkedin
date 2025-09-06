@@ -18,7 +18,6 @@ function ChatPage() {
   const [filePreview, setFilePreview] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
-  const [audioChunks, setAudioChunks] = useState([]);
   const [fileType, setFileType] = useState(null);
   const [user, setUser] = useState(null);
   const [connections, setConnections] = useState([]);
@@ -170,64 +169,63 @@ function ChatPage() {
     }
   };
 
-const handleSend = async () => {
-  setIsLoading(true);
-  const fileToSend = selectedFile;
-  const typeToSend = fileType;
+  const handleSend = async () => {
+    setIsLoading(true);
+    const fileToSend = selectedFile;
+    const typeToSend = fileType;
 
-  if (!newMessage.trim() && !fileToSend) return;
+    if (!newMessage.trim() && !fileToSend) return;
 
-  const formData = new FormData();
+    const formData = new FormData();
 
-  // Text
-  if (newMessage.trim()) {
-    formData.append("message", newMessage.trim());
-  }
+    // Text
+    if (newMessage.trim()) {
+   formData.append("content", newMessage.trim());
 
-  // Media
-  if (fileToSend) {
-    if (typeof fileToSend === "string" && typeToSend === "gif") {
-      // Case: GIF URL
-      const response = await fetch(fileToSend);
-      const blob = await response.blob();
-      const gifFile = new File([blob], "giphy.gif", { type: "image/gif" });
-      formData.append("media", gifFile);
-      formData.append("mediaType", "gif");
-    } else {
-      // Case: File object (image, video, audio, etc.)
-      formData.append("media", fileToSend);
-      formData.append("mediaType", typeToSend);
     }
-  }
 
-  formData.append("receiverId", selectedChat._id);
 
-  try {
-    const res = await fetch(`${import.meta.env.VITE_BASE_URL}/api/messages`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: formData,
-    });
-
-    const data = await res.json();
-    console.log("📩 Sent Message:", data);
-
-    if (data.success) {
-      useChatStore.getState().sendMessage(user._id, selectedChat._id, data.message);
-      setNewMessage("");
-      setSelectedFile(null);
-      setFileType(null);
+    if (fileToSend) {
+      if (typeof fileToSend === "string" && typeToSend === "gif") {
+        // Case: GIF URL
+        const response = await fetch(fileToSend);
+        const blob = await response.blob();
+        const gifFile = new File([blob], "giphy.gif", { type: "image/gif" });
+        formData.append("media", gifFile);
+        formData.append("mediaType", "gif");
+      } else {
+        // Case: File object (image, video, audio, etc.)
+        formData.append("media", fileToSend);
+        formData.append("mediaType", typeToSend);
+      }
     }
-  } catch (err) {
-    console.error("❌ Error sending message:", err);
-  }finally{
-    setIsLoading(false);
-  }
-};
 
+    formData.append("receiverId", selectedChat._id);
 
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BASE_URL}/api/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
+      });
+
+      const data = await res.json();
+      console.log("📩 Sent Message:", data);
+
+      if (data.success) {
+        useChatStore.getState().sendMessage(user._id, selectedChat._id, data.message);
+        setNewMessage("");
+        setSelectedFile(null);
+        setFileType(null);
+      }
+    } catch (err) {
+      console.error("❌ Error sending message:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -244,22 +242,22 @@ const handleSend = async () => {
         }
       };
 
-     recorder.onstop = () => {
-  const audioBlob = new Blob(audioChunksRef.current, { 
-    type: "audio/webm;codecs=opus" 
-  });
-  
-  // Create a URL for the audio blob for preview
-  const audioUrl = URL.createObjectURL(audioBlob);
-  setAudioPreview(audioUrl);
-  
-  // Store the audio blob directly for sending
-  setSelectedFile(audioBlob);
-  setFileType("audio");
-  
-  // Stop all tracks in the stream
-  stream.getTracks().forEach(track => track.stop());
-};
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { 
+          type: "audio/webm;codecs=opus" 
+        });
+        
+        // Create a URL for the audio blob for preview
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioPreview(audioUrl);
+        
+        // Store the audio blob directly for sending
+        setSelectedFile(audioBlob);
+        setFileType("audio");
+        
+        // Stop all tracks in the stream
+        stream.getTracks().forEach(track => track.stop());
+      };
 
       recorder.start();
       setMediaRecorder(recorder);
@@ -299,56 +297,65 @@ const handleSend = async () => {
     setEditingMessage(null);
     inputRef.current?.focus();
   };
-const renderMessageContent = (msg) => {
-  // Case: Shared post object (from shareModal)
-  if (msg.sharedPost) {
-    return (
-      <div 
-        className="border rounded-lg p-2 bg-base-200 cursor-pointer hover:bg-base-300"
-        onClick={() => window.open(msg.sharedPost.url, "_blank")}
-      >
-        <h4 className="font-semibold">{msg.sharedPost.title}</h4>
-        {msg.sharedPost.thumbnail && (
-          <img 
-            src={msg.sharedPost.thumbnail} 
-            alt={msg.sharedPost.title} 
-            className="mt-1 rounded-md max-h-32 object-cover"
-          />
-        )}
-        <p className="text-xs text-base-content/70 mt-1">
-          {msg.sharedPost.description}
-        </p>
-      </div>
-    );
-  }
 
-  // Case: Plain link (http/https)
+  const renderMessageContent = (msg) => {
+
+ if (msg.messageType === "post_share") {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  if (urlRegex.test(msg.content)) {
-    return (
-      <p className="text-sm break-words mt-1">
-        {msg.content.split(" ").map((part, i) =>
-          urlRegex.test(part) ? (
-            <a
-              key={i}
-              href={part}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 underline hover:text-blue-700"
-            >
-              {part}
-            </a>
-          ) : (
-            <span key={i}>{part} </span>
-          )
-        )}
+  const urls = msg.content.match(urlRegex);
+  const postUrl = urls ? urls[0] : null;
+
+  const textContent = postUrl ? msg.content.replace(postUrl, '').trim() : msg.content;
+
+  return (
+    <div 
+      className={`border rounded-lg p-3 cursor-pointer transition-colors 
+                 bg-base-200 hover:bg-base-300 text-base-content`}
+      onClick={() => postUrl && window.open(postUrl, "_blank")}
+    >
+      <p className="text-sm text-base-content mb-2">
+        {textContent}
       </p>
-    );
-  }
+      {postUrl && (
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-primary truncate max-w-[200px]">
+            {postUrl}
+          </span>
+          <span className="text-xs text-base-content/70">Click to view</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 
-  return <p className="text-sm break-words mt-1">{msg.content}</p>;
-};
+
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    if (urlRegex.test(msg.content)) {
+      const parts = msg.content.split(urlRegex);
+      return (
+        <p className="text-sm break-words mt-1">
+          {parts.map((part, index) => 
+            urlRegex.test(part) ? (
+              <a
+                key={index}
+                href={part}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline break-all"
+              >
+                {part}
+              </a>
+            ) : (
+              part
+            )
+          )}
+        </p>
+      );
+    }
+
+    return <p className="text-sm break-words mt-1">{msg.content}</p>;
+  };
 
   const handleDelete = async (messageId) => {
     if (window.confirm("Are you sure you want to delete this message?")) {
@@ -388,16 +395,10 @@ const renderMessageContent = (msg) => {
     setShowEmojiPicker(false);
   };
 
-
-
-
   const formatTime = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
-
-
-
 
   useEffect(() => {
     return () => {
@@ -418,6 +419,8 @@ const renderMessageContent = (msg) => {
               type="text"
               placeholder="Search messages"
               className="input input-bordered w-full bg-base-100"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
@@ -470,122 +473,120 @@ const renderMessageContent = (msg) => {
                   <div className="text-center text-base-content/70 py-8">
                     Loading messages...
                   </div>
-                ) : Array.isArray(messages) && messages.length > 0 ?
-               (messages.map((msg, idx) => {
-  const isOwnMessage = msg.sender._id === user?._id;
-  const hasMedia = msg.mediaUrl || msg.gifUrl;
+                ) : Array.isArray(messages) && messages.length > 0 ? (
+                  messages.map((msg, idx) => {
+                    const isOwnMessage = msg.sender._id === user?._id;
+                    const hasMedia = msg.mediaUrl || msg.gifUrl;
 
-  return (
-    <div
-      key={msg._id || idx}
-      className={`group relative flex flex-col ${
-        isOwnMessage ? "items-end" : "items-start"
-      }`}
-    >
-  
-      {activeMenu === msg._id && (
-        <div className="flex gap-2 mb-1 px-2 py-1 rounded-lg bg-base-200 shadow-md">
-          <button
-            className="btn btn-xs btn-ghost"
-            title="Reply"
-            onClick={() => handleReply(msg)}
-          >
-            <Reply size={14} />
-          </button>
-          {isOwnMessage && (
-            <>
-              <button
-                className="btn btn-xs btn-ghost"
-                title="Edit"
-                onClick={() => handleEdit(msg)}
-              >
-                <Edit size={14} />
-              </button>
-              <button
-                className="btn btn-xs btn-ghost text-error"
-                title="Delete"
-                onClick={() => handleDelete(msg._id)}
-              >
-                <Trash2 size={14} />
-              </button>
-            </>
-          )}
-          <button
-            className="btn btn-xs btn-ghost"
-            title="Close"
-            onClick={() => setActiveMenu(null)}
-          >
-            <X size={14} />
-          </button>
-        </div>
-      )}
+                    return (
+                      <div
+                        key={msg._id || idx}
+                        className={`group relative flex flex-col ${
+                          isOwnMessage ? "items-end" : "items-start"
+                        }`}
+                      >
+                    
+                        {activeMenu === msg._id && (
+                          <div className="flex gap-2 mb-1 px-2 py-1 rounded-lg bg-base-200 shadow-md">
+                            <button
+                              className="btn btn-xs btn-ghost"
+                              title="Reply"
+                              onClick={() => handleReply(msg)}
+                            >
+                              <Reply size={14} />
+                            </button>
+                            {isOwnMessage && (
+                              <>
+                                <button
+                                  className="btn btn-xs btn-ghost"
+                                  title="Edit"
+                                  onClick={() => handleEdit(msg)}
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  className="btn btn-xs btn-ghost text-error"
+                                  title="Delete"
+                                  onClick={() => handleDelete(msg._id)}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </>
+                            )}
+                            <button
+                              className="btn btn-xs btn-ghost"
+                              title="Close"
+                              onClick={() => setActiveMenu(null)}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
 
-      <div
-        className={`rounded-2xl p-2 shadow-sm cursor-pointer ${
-          isOwnMessage
-            ? "bg-primary text-primary-content rounded-br-md"
-            : "bg-base-200 text-base-content rounded-bl-md"
-        }`}
-        style={{ maxWidth: hasMedia ? "260px" : "100%" }}
-        onClick={() => setActiveMenu(activeMenu === msg._id ? null : msg._id)}
-      >
-        {msg.replyTo && (
-          <div className="text-xs opacity-75 mb-1 border-l-2 pl-2">
-            Replying to: {msg.replyTo.content}
-          </div>
-        )}
+                        <div
+                          className={`rounded-2xl p-2 shadow-sm cursor-pointer ${
+                            isOwnMessage
+                              ? "bg-primary text-primary-content rounded-br-md"
+                              : "bg-base-200 text-base-content rounded-bl-md"
+                          }`}
+                          style={{ maxWidth: hasMedia ? "260px" : "100%" }}
+                          onClick={() => setActiveMenu(activeMenu === msg._id ? null : msg._id)}
+                        >
+                          {msg.replyTo && (
+                            <div className="text-xs opacity-75 mb-1 border-l-2 pl-2">
+                              Replying to: {msg.replyTo.content}
+                            </div>
+                          )}
 
-        {/* Media rendering */}
-        {msg.mediaType === "image" && msg.mediaUrl && (
-          <img
-            src={msg.mediaUrl}
-            alt="Shared"
-            className="rounded-lg object-cover max-w-[240px] max-h-[180px]"
-          />
-        )}
-        {msg.mediaType === "video" && msg.mediaUrl && (
-          <video
-            controls
-            className="rounded-lg max-w-[240px] max-h-[180px]"
-          >
-            <source src={msg.mediaUrl} type="video/mp4" />
-          </video>
-        )}
-        {msg.mediaType === "audio" && msg.mediaUrl && (
-          <div className="flex items-center gap-2  p-2 rounded-lg">
-            <audio 
-              controls 
-              className="w-48 max-w-full"
-              src={msg.mediaUrl}
-            >
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        )}
+                          {/* Media rendering */}
+                          {msg.mediaType === "image" && msg.mediaUrl && (
+                            <img
+                              src={msg.mediaUrl}
+                              alt="Shared"
+                              className="rounded-lg object-cover max-w-[240px] max-h-[180px]"
+                            />
+                          )}
+                          {msg.mediaType === "video" && msg.mediaUrl && (
+                            <video
+                              controls
+                              className="rounded-lg max-w-[240px] max-h-[180px]"
+                            >
+                              <source src={msg.mediaUrl} type="video/mp4" />
+                            </video>
+                          )}
+                          {msg.mediaType === "audio" && msg.mediaUrl && (
+                            <div className="flex items-center gap-2  p-2 rounded-lg">
+                              <audio 
+                                controls 
+                                className="w-48 max-w-full"
+                                src={msg.mediaUrl}
+                              >
+                                Your browser does not support the audio element.
+                              </audio>
+                            </div>
+                          )}
 
-        {msg.mediaType === "gif" && (msg.mediaUrl || msg.gifUrl) && (
-          <img
-            src={msg.mediaUrl || msg.gifUrl}
-            alt="GIF"
-            className="rounded-lg object-cover max-w-[240px] max-h-[180px]"
-          />
-        )}
+                          {msg.mediaType === "gif" && (msg.mediaUrl || msg.gifUrl) && (
+                            <img
+                              src={msg.mediaUrl || msg.gifUrl}
+                              alt="GIF"
+                              className="rounded-lg object-cover max-w-[240px] max-h-[180px]"
+                            />
+                          )}
 
-        
-        {msg.content && (
-          <p className="text-sm break-words mt-1">{msg.content}</p>
-        )}
+                          
+                      {renderMessageContent(msg)}
 
-        {/* Time & ticks */}
-        <div className="flex justify-between items-center mt-1 text-xs opacity-70">
-          <time>{formatTime(msg.createdAt)}</time>
-          {isOwnMessage && <span>{msg.isRead ? "✓✓" : "✓"}</span>}
-        </div>
-      </div>
-    </div>
-  );
-}))
-: (
+                          {/* Time & ticks */}
+                          <div className="flex justify-between items-center mt-1 text-xs opacity-70">
+                            <time>{formatTime(msg.createdAt)}</time>
+                            {isOwnMessage && <span>{msg.isRead ? "✓✓" : "✓"}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
                   <div className="text-center text-base-content/70 py-8">
                     No messages yet. Start the conversation!
                   </div>
@@ -596,33 +597,33 @@ const renderMessageContent = (msg) => {
 
             
             {audioPreview && (
-  <div className="border-t border-base-300 bg-base-200 p-3 flex justify-between items-center">
-    <div className="flex items-center gap-3">
-      <button 
-        onClick={handlePlayPause}
-        className="btn btn-circle btn-sm btn-primary"
-      >
-        {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-      </button>
-      <audio
-        ref={audioRef}
-        src={audioPreview}
-        onEnded={() => setIsPlaying(false)}
-        className="hidden"
-      />
-      <span className="text-sm">Voice message</span>
-    </div>
-    <div className="flex gap-2">
-      <button 
-        className="btn btn-ghost btn-sm"
-        onClick={cancelAudio}
-      >
-        <X size={16} />
-      </button>
-  
-    </div>
-  </div>
-)}
+              <div className="border-t border-base-300 bg-base-200 p-3 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handlePlayPause}
+                    className="btn btn-circle btn-sm btn-primary"
+                  >
+                    {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                  </button>
+                  <audio
+                    ref={audioRef}
+                    src={audioPreview}
+                    onEnded={() => setIsPlaying(false)}
+                    className="hidden"
+                  />
+                  <span className="text-sm">Voice message</span>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    className="btn btn-ghost btn-sm"
+                    onClick={cancelAudio}
+                  >
+                    <X size={16} />
+                  </button>
+              
+                </div>
+              </div>
+            )}
 
               {filePreview && (
                 <div className="border-t border-base-300 bg-base-200 p-3 flex justify-between items-center">
