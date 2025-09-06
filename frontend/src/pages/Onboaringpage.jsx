@@ -1,145 +1,497 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Camera, Mail, User } from 'lucide-react';
-import { useAuthStore } from '../store/userAuthStore';
-import toast from 'react-hot-toast';
-import { AxiosInstance } from '../utils/axios'; // or your Axios path
-import { useThemeStore } from '../store/useThemeStore';
+import { useState } from "react";
+import { Camera, Plus, Trash } from "lucide-react";
 
-function OnboardingPage() {
-  const [bio, setBio] = useState('');
-  const [image, setImage] = useState(null); // actual File
-  const [previewUrl, setPreviewUrl] = useState(null); // URL string for image preview
-  const [loading, setLoading] = useState(false);
-const {theme}= useThemeStore();
-  const { user } = useAuthStore();
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
 
-  const navigate = useNavigate();
+import { useAuthStore } from "../store/userAuthStore";
+import { onboarding } from "../utils/api";
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
+const OnboardingPage = ({}) => {
+
+const {user,refreshUser}=useAuthStore();
+  const [formData, setFormData] = useState({
+    name: user?.name || "",
+    title: user?.title || "",
+    bio: user?.bio || "",
+    skills: user?.skills?.join(", ") || "",
+    education: user?.education || [],
+    experience: user?.experience || [],
+    location: user?.location || { city: "", country: "" },
+    contactInfo: user?.contactInfo || {
+      phone: "",
+      website: "",
+      github: "",
+      linkedin: "",
+      twitter: "",
+    },
+    socialLinks: user?.socialLinks || {
+      portfolio: "",
+      behance: "",
+      dribbble: "",
+      medium: "",
+    },
+  });
+
+  const [profilePic, setProfilePic] = useState(null);
+  const [preview, setPreview] = useState(null);
+
+  // Profile pic change
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setProfilePic(file);
     if (file) {
-      setImage(file); // for upload
-      setPreviewUrl(URL.createObjectURL(file)); // for image preview
+      setPreview(URL.createObjectURL(file));
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  // Normal inputs
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-    if (!user?._id) {
-      toast.error("User not found in auth store.");
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append("name", name);
-      formData.append("bio", bio);
-      if (image) {
-        formData.append("profilePic", image);
-      }
-
-      const res = await AxiosInstance.put(`/auth/onboarding/${user._id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
+  // Education handlers
+  const addEducation = () =>
+    setFormData((prev) => ({
+      ...prev,
+      education: [
+        ...prev.education,
+        {
+          school: "",
+          degree: "",
+          fieldOfStudy: "",
+          startYear: "",
+          endYear: "",
+          description: "",
         },
-      });
+      ],
+    }));
+  const removeEducation = (i) =>
+    setFormData((prev) => ({
+      ...prev,
+      education: prev.education.filter((_, idx) => idx !== i),
+    }));
 
-      const data = res.data;
+  const addExperience = () =>
+    setFormData((prev) => ({
+      ...prev,
+      experience: [
+        ...prev.experience,
+        {
+          company: "",
+          position: "",
+          role: "",
+          startDate: "",
+          endDate: "",
+          current: false,
+          description: "",
+        },
+      ],
+    }));
+  const removeExperience = (i) =>
+    setFormData((prev) => ({
+      ...prev,
+      experience: prev.experience.filter((_, idx) => idx !== i),
+    }));
 
-      localStorage.setItem("user", JSON.stringify(data.user));
-      toast.success("Onboarding complete!");
-      navigate('/'); // Redirect to home or desired page after onboarding
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const formDataToSend = new FormData();
 
-    } catch (error) {
-      console.error("Onboarding error:", error);
-      toast.error(error?.response?.data?.message || "Onboarding failed");
-    } finally {
-      setLoading(false);
 
+    const processedData = {
+      ...formData,
+      skills: formData.skills.split(',').map(skill => skill.trim())
+    };
+
+    Object.keys(processedData).forEach((key) => {
+      if (typeof processedData[key] === "object") {
+        formDataToSend.append(key, JSON.stringify(processedData[key]));
+      } else {
+        formDataToSend.append(key, processedData[key]);
+      }
+    });
+
+    if (profilePic) {
+      formDataToSend.append("file", profilePic);
     }
-  };
+
+    await onboarding(user._id, formDataToSend);
+     await refreshUser(); 
+       window.location.href = "/";
+  } catch (err) {
+    console.error("Onboarding error:", err);
+    alert("Failed to update profile");
+  }
+};
+
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-base-200" data-theme={theme}>
-      <div className="bg-base-100 p-8 rounded-lg shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-1 text-center">Welcome, {user?.name}</h2>
-        <p className="text-sm text-center text-gray-500 mb-6">{user?.email}</p>
+    <div className="max-w-5xl mx-auto p-6">
+      <h2 className="text-3xl font-bold text-center mb-8">
+        Complete Your Profile
+      </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex justify-center">
-            <label className="cursor-pointer relative group">
-              <div className="w-32 h-32 rounded-full overflow-hidden bg-base-300 flex items-center justify-center hover:bg-base-200 transition group-hover:opacity-90">
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Profile Preview" className="object-cover w-full h-full" />
-                ) : (
-                  <Camera className="w-10 h-10 text-gray-500" />
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden"
-              />
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* Profile Pic */}
+        <div className="flex justify-center">
+          <div className="relative w-32 h-32">
+            <img
+              src={preview || user?.profilePic || "/default-avatar.png"}
+              alt="Profile Preview"
+              className="w-32 h-32 rounded-full object-cover border-2 border-gray-300"
+            />
+            <label
+              htmlFor="profilePic"
+              className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full cursor-pointer shadow-lg"
+            >
+              <Camera size={18} />
             </label>
-          </div>
-
-          <div className="form-control">
-            <label className="label mb-2">Full Name</label>
-            <div className="relative">
-              <input
-                name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                type="text"
-                placeholder="John Doe"
-                className="input input-bordered w-full pl-10"
-              />
-              <User className="absolute left-3 top-3 text-gray-400" size={20} />
-            </div>
-          </div>
-
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text mb-2">Email</span>
-            </label>
-            <div className="relative">
-              <input
-                name="email"
-                value={email}
-                disabled
-                type="email"
-                placeholder="Enter email"
-                className="input input-bordered w-full pl-10"
-              />
-              <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
-            </div>
-          </div>
-
-          <div className="form-control w-full">
-            <label className="label">
-              <span className="label-text mb-2">Your Bio</span>
-            </label>
-            <textarea
-              className="textarea textarea-bordered pl-2 w-full"
-              placeholder="Tell us about yourself..."
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
+            <input
+              id="profilePic"
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="hidden"
             />
           </div>
+        </div>
 
-          <button type="submit" className="btn btn-primary w-full">
-            {loading ? 'Completing...' : 'Complete Profile'}
-          </button>
-        </form>
-      </div>
+        {/* Basic Info */}
+        <div className="card bg-base-200 p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input
+              type="text"
+              name="name"
+              placeholder="Full Name"
+              className="input input-bordered w-full"
+              value={formData.name}
+              onChange={handleInputChange}
+            />
+            <input
+              type="text"
+              name="title"
+              placeholder="Professional Title"
+              className="input input-bordered w-full"
+              value={formData.title}
+              onChange={handleInputChange}
+            />
+          </div>
+          <textarea
+            name="bio"
+            placeholder="Tell us about yourself..."
+            className="textarea textarea-bordered w-full mt-4"
+            rows={4}
+            value={formData.bio}
+            onChange={handleInputChange}
+          />
+        </div>
+
+        {/* Skills */}
+        <div className="card bg-base-200 p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4">Skills</h3>
+          <input
+            type="text"
+            placeholder="JavaScript, React, Node.js"
+            className="input input-bordered w-full"
+            value={formData.skills}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, skills: e.target.value }))
+            }
+          />
+        </div>
+
+        {/* Education */}
+        <div className="card bg-base-200 p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4 flex justify-between">
+            Education
+            <button
+              type="button"
+              onClick={addEducation}
+              className="btn btn-sm btn-outline"
+            >
+              <Plus size={16} className="mr-1" /> Add
+            </button>
+          </h3>
+          <div className="space-y-4">
+            {formData.education.map((edu, idx) => (
+              <div key={idx} className="space-y-2 border-b pb-4">
+                <input
+                  type="text"
+                  placeholder="School"
+                  className="input input-bordered w-full"
+                  value={edu.school}
+                  onChange={(e) => {
+                    const newEdu = [...formData.education];
+                    newEdu[idx].school = e.target.value;
+                    setFormData((prev) => ({ ...prev, education: newEdu }));
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Degree"
+                  className="input input-bordered w-full"
+                  value={edu.degree}
+                  onChange={(e) => {
+                    const newEdu = [...formData.education];
+                    newEdu[idx].degree = e.target.value;
+                    setFormData((prev) => ({ ...prev, education: newEdu }));
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Field of Study"
+                  className="input input-bordered w-full"
+                  value={edu.fieldOfStudy}
+                  onChange={(e) => {
+                    const newEdu = [...formData.education];
+                    newEdu[idx].fieldOfStudy = e.target.value;
+                    setFormData((prev) => ({ ...prev, education: newEdu }));
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="number"
+                    placeholder="Start Year"
+                    className="input input-bordered w-full"
+                    value={edu.startYear}
+                    onChange={(e) => {
+                      const newEdu = [...formData.education];
+                      newEdu[idx].startYear = e.target.value;
+                      setFormData((prev) => ({ ...prev, education: newEdu }));
+                    }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="End Year"
+                    className="input input-bordered w-full"
+                    value={edu.endYear}
+                    onChange={(e) => {
+                      const newEdu = [...formData.education];
+                      newEdu[idx].endYear = e.target.value;
+                      setFormData((prev) => ({ ...prev, education: newEdu }));
+                    }}
+                  />
+                </div>
+                <textarea
+                  placeholder="Description"
+                  className="textarea textarea-bordered w-full"
+                  value={edu.description}
+                  onChange={(e) => {
+                    const newEdu = [...formData.education];
+                    newEdu[idx].description = e.target.value;
+                    setFormData((prev) => ({ ...prev, education: newEdu }));
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeEducation(idx)}
+                  className="btn btn-sm btn-error mt-2"
+                >
+                  <Trash size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Experience */}
+        <div className="card bg-base-200 p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4 flex justify-between">
+            Experience
+            <button
+              type="button"
+              onClick={addExperience}
+              className="btn btn-sm btn-outline"
+            >
+              <Plus size={16} className="mr-1" /> Add
+            </button>
+          </h3>
+          <div className="space-y-4">
+            {formData.experience.map((exp, idx) => (
+              <div key={idx} className="space-y-2 border-b pb-4">
+                <input
+                  type="text"
+                  placeholder="Company"
+                  className="input input-bordered w-full"
+                  value={exp.company}
+                  onChange={(e) => {
+                    const newExp = [...formData.experience];
+                    newExp[idx].company = e.target.value;
+                    setFormData((prev) => ({ ...prev, experience: newExp }));
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Position"
+                  className="input input-bordered w-full"
+                  value={exp.position}
+                  onChange={(e) => {
+                    const newExp = [...formData.experience];
+                    newExp[idx].position = e.target.value;
+                    setFormData((prev) => ({ ...prev, experience: newExp }));
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="Role"
+                  className="input input-bordered w-full"
+                  value={exp.role}
+                  onChange={(e) => {
+                    const newExp = [...formData.experience];
+                    newExp[idx].role = e.target.value;
+                    setFormData((prev) => ({ ...prev, experience: newExp }));
+                  }}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={exp.startDate}
+                    onChange={(e) => {
+                      const newExp = [...formData.experience];
+                      newExp[idx].startDate = e.target.value;
+                      setFormData((prev) => ({ ...prev, experience: newExp }));
+                    }}
+                  />
+                  <input
+                    type="date"
+                    className="input input-bordered w-full"
+                    value={exp.endDate}
+                    onChange={(e) => {
+                      const newExp = [...formData.experience];
+                      newExp[idx].endDate = e.target.value;
+                      setFormData((prev) => ({ ...prev, experience: newExp }));
+                    }}
+                  />
+                </div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={exp.current}
+                    onChange={(e) => {
+                      const newExp = [...formData.experience];
+                      newExp[idx].current = e.target.checked;
+                      setFormData((prev) => ({ ...prev, experience: newExp }));
+                    }}
+                  />
+                  Current Job
+                </label>
+                <textarea
+                  placeholder="Description"
+                  className="textarea textarea-bordered w-full"
+                  value={exp.description}
+                  onChange={(e) => {
+                    const newExp = [...formData.experience];
+                    newExp[idx].description = e.target.value;
+                    setFormData((prev) => ({ ...prev, experience: newExp }));
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeExperience(idx)}
+                  className="btn btn-sm btn-error mt-2"
+                >
+                  <Trash size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Location */}
+        <div className="card bg-base-200 p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4">Location</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="City"
+              className="input input-bordered w-full"
+              value={formData.location.city}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  location: { ...prev.location, city: e.target.value },
+                }))
+              }
+            />
+            <input
+              type="text"
+              placeholder="Country"
+              className="input input-bordered w-full"
+              value={formData.location.country}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  location: { ...prev.location, country: e.target.value },
+                }))
+              }
+            />
+          </div>
+        </div>
+
+        {/* Contact Info */}
+        <div className="card bg-base-200 p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {["phone", "website", "github", "linkedin", "twitter"].map(
+              (field) => (
+                <input
+                  key={field}
+                  type="text"
+                  placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                  className="input input-bordered w-full"
+                  value={formData.contactInfo[field]}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      contactInfo: {
+                        ...prev.contactInfo,
+                        [field]: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              )
+            )}
+          </div>
+        </div>
+
+        {/* Social Links */}
+        <div className="card bg-base-200 p-6 shadow-md">
+          <h3 className="text-lg font-semibold mb-4">Social Links</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {["portfolio", "behance", "dribbble", "medium"].map((field) => (
+              <input
+                key={field}
+                type="text"
+                placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                className="input input-bordered w-full"
+                value={formData.socialLinks[field]}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    socialLinks: {
+                      ...prev.socialLinks,
+                      [field]: e.target.value,
+                    },
+                  }))
+                }
+              />
+            ))}
+          </div>
+        </div>
+
+        <button type="submit" className="btn btn-primary w-full mt-6">
+          Save Profile
+        </button>
+      </form>
     </div>
   );
-}
+};
 
 export default OnboardingPage;

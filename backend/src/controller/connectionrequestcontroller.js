@@ -65,7 +65,26 @@ export const acceptConnectionRequest = async (req, res) => {
   }
 };
 
+export const rejectConnectionRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const userId = req.user._id;
 
+    const request = await ConnectionRequest.findById(requestId);
+
+    if (!request) return res.status(404).json({ message: "Request not found" });
+
+    if (request.receiver.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "Unauthorized action" });
+    }
+const delelte=await ConnectionRequest.findByIdAndDelete(requestId);
+if(!delelte) return res.status(404).json({ message: "Request not found" });
+   return res.status(200).json({ message: "Connection request rejected" });
+ 
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
 
 // 4. Get all pending requests for user
 export const getPendingRequests = async (req, res) => {

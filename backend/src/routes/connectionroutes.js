@@ -8,7 +8,9 @@ import {
   getSentRequests,
   getReceivedRequests,
   getAcceptedConnections,
+  rejectConnectionRequest,
 } from "../controller/connectionrequestcontroller.js";
+
 
 const router = express.Router();
 
@@ -21,4 +23,6 @@ router.get("/pending", protectRoute, getPendingRequests);
 router.get("/sent", protectRoute, getSentRequests);
 router.get("/received", protectRoute, getReceivedRequests);
 router.get("/accepted", protectRoute, getAcceptedConnections);
+router.get("/rejected", protectRoute, rejectConnectionRequest);
+
 export default router;

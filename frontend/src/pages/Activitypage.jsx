@@ -1,18 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
-import LeftSidebar from '../components/LeftSidebar';
-import RightSidebar from '../components/RightSidebar';
+
 import {
   getSentRequests,
   getReceivedRequests,
   getAcceptedConnections,
   acceptConnectionRequest,
-} from '../utils/api'; // You'll implement these APIs
+} from '../utils/api'; 
 import toast from 'react-hot-toast';
 import { updatedUser } from '../utils/updateUserinfo';
 import { useThemeStore } from '../store/useThemeStore';
+import { useAuthStore } from '../store/userAuthStore';
 
 function ActivityPage() {
+  const { refreshUser } = useAuthStore();
   const [activeTab, setActiveTab] = useState('sent');
   const [sentRequests, setSentRequests] = useState([]);
   const [receivedRequests, setReceivedRequests] = useState([]);
@@ -20,14 +21,25 @@ function ActivityPage() {
   const [loading, setLoading] = useState(true);
   const {theme}= useThemeStore();
 async function handleAccept(requestId) {
-    try {
-        const res =await acceptConnectionRequest(requestId);
-        await updatedUser();
-        toast.success("Connection request accepted!");
-    } catch (error) {
-        console.error("Error accepting connection request:", error);
-    }
+  try {
+    const res = await acceptConnectionRequest(requestId);
+      await refreshUser();
+    await updatedUser();
+    toast.success("Connection request accepted!");
+
+ 
+    const updatedConnections = await getAcceptedConnections();
+    setAcceptedConnections(updatedConnections);
+    
+    
+    const updatedReceived = await getReceivedRequests();
+    setReceivedRequests(updatedReceived);
+
+  } catch (error) {
+    console.error("Error accepting connection request:", error);
+  }
 }
+
   useEffect(() => {
     const fetchActivityData = async () => {
       try {
@@ -83,12 +95,7 @@ async function handleAccept(requestId) {
       <Navbar />
 
       <div className="flex flex-col lg:flex-row px-4 py-6 gap-6 max-w-[1440px] mx-auto">
-        {/* Left Sidebar */}
-        {/* <div className="hidden lg:block lg:w-1/4">
-          <LeftSidebar />
-        </div> */}
-
-        {/* Center Feed */}
+  
         <div className="w-full lg:w-2/4">
           <div className="mb-6 text-center">
             <h1 className="text-3xl font-bold text-primary">Your Activity</h1>
@@ -127,10 +134,7 @@ async function handleAccept(requestId) {
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        {/* <div className="hidden lg:block lg:w-1/4">
-          <RightSidebar />
-        </div> */}
+ 
       </div>
     </div>
   );

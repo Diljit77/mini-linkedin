@@ -13,6 +13,8 @@ import AuthRedirectRoute from './utils/authredirectedroute'
 import EditPostModal from './components/EditpostModal'
 import ActivityPage from './pages/Activitypage'
 import EditProfilePage from './components/EditprofileModal'
+import ChatPage from './pages/ChatPage'
+import OtherUserProfile from './pages/OtherUserpage'
 
 
 function App() {
@@ -68,6 +70,16 @@ function App() {
             <Route path="/profile/:id" element={
           <PrivateRoute>
             <EditProfilePage />
+          </PrivateRoute>
+        } />
+            <Route path="/otherprofile/:id" element={
+          <PrivateRoute>
+            <OtherUserProfile />
+          </PrivateRoute>
+        } />
+             <Route path="/message" element={
+          <PrivateRoute>
+            <ChatPage />
           </PrivateRoute>
         } />
        

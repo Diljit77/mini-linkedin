@@ -10,16 +10,23 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@giphy/js-fetch-api": "^5.7.0",
+    "@giphy/react-components": "^10.1.0",
     "@tailwindcss/vite": "^4.1.11",
     "axios": "^1.11.0",
     "dayjs": "^1.11.13",
+    "emoji-picker-react": "^4.13.2",
+    "framer-motion": "^12.23.12",
     "install": "^0.13.0",
     "lucide-react": "^0.536.0",
     "npm": "^11.5.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",
+    "react-icons": "^5.5.0",
     "react-router-dom": "^7.7.1",
+    "socket.io-client": "^4.8.1",
+    "styled-components": "^6.1.19",
     "tailwindcss": "^4.1.11",
     "zustand": "^5.0.7"
   },

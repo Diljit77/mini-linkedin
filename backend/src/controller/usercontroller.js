@@ -47,9 +47,10 @@ export const getSuggestedUsers = async (req, res) => {
 
 export const getConnectedUsers = async (req, res) => {
   try {
-    const userId = req.user._id;; // assuming req.user is set by middleware like JWT auth
+    const userId = req.user._id;
 
-    const user = await User.findById(userId).populate('connections', '-password'); // populate connections, exclude password
+const user = await User.findById(req.user._id)
+  .populate("connections", "name profilePic");
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -64,3 +65,18 @@ export const getConnectedUsers = async (req, res) => {
     return res.status(500).json({ message: 'Server error' });
   }
 };
+export const getUserprofile=async (req,res) => {
+  try {
+    const id=req.params.id;
+    const user=await User.findById(id).select("-password");
+    if(!user){
+      return res.status(404).json({message:"no user exist" ,success:false});
+    }
+    return res.status(200).json(user);
+  } catch (error) {
+    console.log(error);
+   return res.status(500).json({message:"something went wrong"})
+    
+  }
+  
+}

@@ -4,12 +4,11 @@ import { login } from '../utils/api'
 import toast from 'react-hot-toast'
 import { useThemeStore } from '../store/useThemeStore';
 
-
 function Loginpage() {
   const {theme}= useThemeStore();
       const [form, setForm] = useState({  email: '', password: '', });
       const [loading, setLoading] = useState(false);
-    
+
       const handleChange = (e) => {
         setForm({ ...form, [e.target.name]: e.target.value })
       }
@@ -22,11 +21,14 @@ function Loginpage() {
           const data=await login(form);
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
+
         toast.success('Login successful!');
+       window.location.href = "/";
         } catch (error) {
       console.log(error)
         }finally{
 setLoading(false);
+   
         }
       
      

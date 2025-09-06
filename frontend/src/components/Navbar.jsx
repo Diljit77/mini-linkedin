@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, PlusSquare, User, LogOut, NotebookIcon } from 'lucide-react';
+import { Home, PlusSquare, User, LogOut, NotebookIcon, MessagesSquareIcon } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/userAuthStore';
 import toast from 'react-hot-toast';
@@ -14,7 +14,7 @@ function handlelogout(){
   localStorage.removeItem("user");
   localStorage.removeItem("token");
   toast.success("logout successfully");
-navigate("/");
+window.location.href = "/login";
 }
   return (
     <nav className="bg-base-100 shadow-md px-6 py-3 flex justify-between items-center">
@@ -36,6 +36,9 @@ navigate("/");
         </Link>
         <Link to="/profile" className="flex items-center gap-1 hover:text-primary transition">
           <User size={20} /> Profile
+        </Link>
+          <Link to="/message" className="flex items-center gap-1 hover:text-primary transition">
+          <MessagesSquareIcon size={20} /> message
         </Link>
         <ThemeSelector />
       </div>

@@ -1,21 +1,16 @@
-// controllers/uploadController.js
-import cloudinary from '../utils/cloudinary.js';
-import fs from 'fs';
+import cloudinary from "../config/cloudinary.js";
+import streamifier from "streamifier";
 
-export const uploadImageToCloudinary = async (localFilePath) => {
-  try {
-    if (!localFilePath) return null;
-
-    const response = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: 'image',
-    });
-
-    // Remove file from local storage after uploading
-    fs.unlinkSync(localFilePath);
-
-    return response.secure_url;
-  } catch (error) {
-    console.error('Cloudinary Upload Error:', error);
-    throw error;
-  }
+export const uploadImageBufferToCloudinary = (buffer, resourceType = "auto", folder = "messages") => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { resource_type: resourceType, folder },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
 };
+

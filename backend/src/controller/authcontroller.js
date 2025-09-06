@@ -6,8 +6,7 @@ import User from "../models/UserModel.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-// ✅ add this
-import streamifier from "streamifier"; // ✅ npm i streamifier
+import streamifier from "streamifier"; 
 import cloudinary from "../config/cloudinary.js";
 
 export const signup = async (req, res) => {
@@ -38,7 +37,7 @@ console.log(name,email,password,
   }
 };
 
-// Login User
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -61,61 +60,94 @@ console.log(password, user.password)
   }
 };
 
+
+
 export const onboarding = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { name, bio } = req.body;
+   
+    const parseIfString = (value) => {
+      if (typeof value === 'string') {
+        try {
+          return JSON.parse(value);
+        } catch (e) {
+          return value; 
+        }
+      }
+      return value;
+    };
+
+    const {
+      name,
+      title,
+      bio,
+      skills,
+      education,
+      experience,
+      location,
+      contactInfo,
+      socialLinks
+    } = req.body;
 
     const existingUser = await User.findById(userId);
-    if (!existingUser) return res.status(400).json({ message: "User does not exist" });
+    if (!existingUser) {
+      return res.status(400).json({ message: "User does not exist" });
+    }
 
     let profilePicUrl = existingUser.profilePic;
 
-    // ✅ If file was uploaded, upload it to Cloudinary
+   
     if (req.file) {
       const streamUpload = (req) => {
         return new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream((error, result) => {
-            if (result) {
-              resolve(result);
-            } else {
-              reject(error);
-            }
+            if (result) resolve(result);
+            else reject(error);
           });
           streamifier.createReadStream(req.file.buffer).pipe(stream);
         });
       };
 
       const result = await streamUpload(req);
-      profilePicUrl = result.secure_url; // ✅ Cloudinary URL
+      profilePicUrl = result.secure_url;
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
-        name,
-        bio,
+        name: name || existingUser.name,
+        title: title || existingUser.title,
+        bio: bio || existingUser.bio,
+        skills: parseIfString(skills) || existingUser.skills,
+        education: parseIfString(education) || existingUser.education,
+        experience: parseIfString(experience) || existingUser.experience,
+        location: parseIfString(location) || existingUser.location,
+        contactInfo: parseIfString(contactInfo) || existingUser.contactInfo,
+        socialLinks: parseIfString(socialLinks) || existingUser.socialLinks,
         profilePic: profilePicUrl,
         isOnboarded: true,
       },
       { new: true }
     );
 
-    return res.status(200).json({ message: "User onboarded successfully", user: updatedUser });
-
+    return res
+      .status(200)
+      .json({ message: "User onboarded successfully", user: updatedUser });
   } catch (err) {
-    console.error("Onboarding Error:", err);
+    console.log("Onboarding Error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
 
 
 
-// Get Current User
+
+
 export const getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.userId).select("-password");
+    const user = await User.findById(req.user.id).select("-password");
     if (!user) return res.status(404).json({ message: "User not found" });
+    console.log(user);
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });

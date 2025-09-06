@@ -1,11 +1,16 @@
-export const updatedUser= async () => {
-    try {
-        const res=await AxiosInstance.get('/auth/me');
-        const updatedUser = res.user;
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-  return updatedUser;
+import { currentUser } from "./api";
 
-    } catch (error) {
-        console.error("Error updating user info:", error);
+export async function updatedUser() {
+  try {
+    const res = await currentUser(); 
+    if (res) {
+      
+      setUser(res);
+
+ 
+      localStorage.setItem("user", JSON.stringify(res));
     }
+  } catch (error) {
+    console.error("Failed to refresh user:", error);
+  }
 }
