@@ -4,7 +4,7 @@ import Post from "../models/Postmodel.js";
 import User from "../models/UserModel.js";
 import { uploadImageBufferToCloudinary } from "../utils/upload.js";
 import Message from "../models/messageModel.js";
-import Notification from "../models/notificationModel.js";
+import Notification from "../models/Notificationmodel.js";
 
 
 
