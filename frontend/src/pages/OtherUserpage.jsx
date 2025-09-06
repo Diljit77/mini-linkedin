@@ -8,7 +8,8 @@ import {
   getAcceptedConnections,
   getSentRequests,
   acceptConnectionRequest,
-  getReceivedRequests
+  getReceivedRequests,
+
 } from "../utils/api";
 import { 
   MapPin, 
@@ -25,7 +26,6 @@ import {
   X
 } from "lucide-react";
 import { useThemeStore } from "../store/useThemeStore";
-
 import toast from "react-hot-toast";
 import { useAuthStore } from "../store/userAuthStore";
 
@@ -40,6 +40,7 @@ const OtherUserProfile = () => {
   const [debugInfo, setDebugInfo] = useState({});
   const [connectionStatus, setConnectionStatus] = useState("not_connected"); 
   const [receivedRequestId, setReceivedRequestId] = useState(null);
+  const [userConnections, setUserConnections] = useState([]);
   const { theme } = useThemeStore();
   const { user: authUser } = useAuthStore();
 
@@ -55,38 +56,49 @@ const OtherUserProfile = () => {
           getuserpost(id),
           getAcceptedConnections(),
           getSentRequests(),
-          getReceivedRequests ? getReceivedRequests() : Promise.resolve([])
+          getReceivedRequests()
         ]);
 
         setCurrentUserData(user);
         setPosts(post);
+        setUserConnections(connections);
 
         if (profile && (profile._id || profile.id)) {
           setProfileUser(profile);
-        
-          const isConnected = connections.some(
-            conn => conn._id === profile._id || conn.id === profile._id || 
-                   conn._id === profile.id || conn.id === profile.id
-          );
+      
+          const isConnected = connections.some(conn => {
+            const connId = conn._id || conn.id;
+            const profileId = profile._id || profile.id;
+            return connId === profileId;
+          });
           
           if (isConnected) {
             setConnectionStatus("connected");
           } else {
-       
-            const hasSentRequest = sentRequests.some(
-              req => req.receiverId === profile._id || req.receiverId === profile.id || 
-                     req.receiver._id === profile._id || req.receiver._id === profile.id
-            );
+            // Check if current user has sent a request to this user
+            const hasSentRequest = sentRequests.some(req => {
+              const receiverId = req.receiverId || (req.receiver && (req.receiver._id || req.receiver.id));
+              const profileId = profile._id || profile.id;
+              return receiverId === profileId;
+            });
             
             if (hasSentRequest) {
               setConnectionStatus("pending");
             } else {
-          
-              if (receivedRequests && receivedRequests.length > 0) {
-                const receivedRequest = receivedRequests.find(
-                  req => req.senderId === profile._id || req.senderId === profile.id || 
-                         req.sender._id === profile._id || req.sender._id === profile.id
-                );
+              // Check if this user has sent a request to current user
+              const hasReceivedRequest = receivedRequests.some(req => {
+                const senderId = req.senderId || (req.sender && (req.sender._id || req.sender.id));
+                const profileId = profile._id || profile.id;
+                return senderId === profileId;
+              });
+              
+              if (hasReceivedRequest) {
+                // Find the specific request
+                const receivedRequest = receivedRequests.find(req => {
+                  const senderId = req.senderId || (req.sender && (req.sender._id || req.sender.id));
+                  const profileId = profile._id || profile.id;
+                  return senderId === profileId;
+                });
                 
                 if (receivedRequest) {
                   setConnectionStatus("received_request");
@@ -116,7 +128,7 @@ const OtherUserProfile = () => {
 
   const handleConnect = async () => {
     try {
-      await Sendrequest(profileUser._id || profileUser.id);
+      await Sendrequest(id);
       setConnectionStatus("pending");
       toast.success("Connection request sent!");
     } catch (error) {
@@ -136,8 +148,30 @@ const OtherUserProfile = () => {
     }
   };
 
+  const handleDeclineRequest = async () => {
+    try {
+      await declineConnectionRequest(receivedRequestId);
+      setConnectionStatus("not_connected");
+      toast.success("Connection request declined!");
+    } catch (error) {
+      console.error("Failed to decline connection request:", error);
+      toast.error(error.response?.data?.message || "Failed to decline connection request");
+    }
+  };
+
   const handleMessage = () => {
-    navigate(`/message`);
+    // Check if user is in connections before allowing message
+    const isConnected = userConnections.some(conn => {
+      const connId = conn._id || conn.id;
+      const profileId = profileUser._id || profileUser.id;
+      return connId === profileId;
+    });
+    
+    if (isConnected) {
+      navigate(`/messages/${profileUser._id || profileUser.id}`);
+    } else {
+      toast.error("You need to be connected to message this user");
+    }
   };
 
   const retryFetch = async () => {
@@ -221,13 +255,12 @@ const OtherUserProfile = () => {
           </div>
         </div>
 
-
         <div className="flex-1">
           <h1 className="text-3xl font-bold">{profileUser.name}</h1>
           <p className="text-lg opacity-70 mt-1">{profileUser.title || "Full Stack Developer"}</p>
 
           <div className="flex gap-6 text-sm opacity-70 mt-3">
-            <span>{profileUser.followers || 0} followers</span>
+     
             <span>{profileUser.connections?.length || 0} connections</span>
           </div>
 
@@ -258,8 +291,8 @@ const OtherUserProfile = () => {
           </div>
         </div>
 
-     
-        {currentUserData?._id !== profileUser._id && (
+        {/* Action Buttons */}
+        {currentUserData?._id !== id && (
           <div className="flex gap-2 flex-wrap justify-center">
             {connectionStatus === "connected" ? (
               <>
@@ -271,35 +304,46 @@ const OtherUserProfile = () => {
                 </button>
               </>
             ) : connectionStatus === "pending" ? (
-              <button className="btn btn-outline" disabled>
-                <UserPlus size={18} className="mr-2" /> Request Sent
-              </button>
+              <>
+                <button className="btn btn-outline" disabled>
+                  <UserPlus size={18} className="mr-2" /> Request Sent
+                </button>
+                <button className="btn btn-ghost" disabled>
+                  <MessageSquare size={18} className="mr-2" /> Message
+                </button>
+              </>
             ) : connectionStatus === "received_request" ? (
               <div className="flex gap-2">
                 <button className="btn btn-primary" onClick={handleAcceptRequest}>
                   <Check size={18} className="mr-2" /> Accept
                 </button>
-                <button className="btn btn-outline">
-                  <X size={18} className="mr-2" /> Decline
+              
+                <button className="btn btn-ghost" disabled>
+                  <MessageSquare size={18} className="mr-2" /> Message
                 </button>
               </div>
             ) : (
-              <button className="btn btn-primary" onClick={handleConnect}>
-                <UserPlus size={18} className="mr-2" /> Connect
-              </button>
+              <>
+                <button className="btn btn-primary" onClick={handleConnect}>
+                  <UserPlus size={18} className="mr-2" /> Connect
+                </button>
+                <button className="btn btn-ghost" disabled>
+                  <MessageSquare size={18} className="mr-2" /> Message
+                </button>
+              </>
             )}
           </div>
         )}
       </div>
 
-
-      {profileUser.about && (
+        {profileUser.about && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">About</h2>
           <p className="opacity-80 leading-relaxed">{profileUser.about}</p>
         </div>
       )}
 
+      {/* Experience */}
       {profileUser.experience?.length > 0 && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Experience</h2>
@@ -314,7 +358,7 @@ const OtherUserProfile = () => {
         </div>
       )}
 
- 
+      {/* Education */}
       {profileUser.education?.length > 0 && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Education</h2>
@@ -328,6 +372,7 @@ const OtherUserProfile = () => {
         </div>
       )}
 
+      {/* Skills */}
       {profileUser.skills?.length > 0 && (
         <div className="rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Skills</h2>
@@ -339,7 +384,7 @@ const OtherUserProfile = () => {
         </div>
       )}
 
-     
+      {/* Recent Activity */}
       <div className="rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
         {posts?.length > 0 ? (

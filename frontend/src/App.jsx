@@ -81,7 +81,7 @@ refreshUser();
             <OtherUserProfile />
           </PrivateRoute>
         } />
-             <Route path="/message" element={
+             <Route path="/messages/:id?" element={
           <PrivateRoute>
             <ChatPage />
           </PrivateRoute>

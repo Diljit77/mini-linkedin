@@ -77,10 +77,7 @@ function Profilepage() {
                     <div className="stat-value text-lg">{user.connections?.length || 0}</div>
                     <div className="stat-desc">Connections</div>
                   </div>
-                  <div className="stat p-0 text-center">
-                    <div className="stat-value text-lg">{user.followers?.length || 0}</div>
-                    <div className="stat-desc">Followers</div>
-                  </div>
+             
                 </div>
 
                 {/* Skills */}

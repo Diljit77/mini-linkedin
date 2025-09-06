@@ -37,7 +37,8 @@ window.location.href = "/login";
         <Link to="/profile" className="flex items-center gap-1 hover:text-primary transition">
           <User size={20} /> Profile
         </Link>
-          <Link to="/message" className="flex items-center gap-1 hover:text-primary transition">
+          {/* Update this line - remove the user ID parameter */}
+          <Link to="/messages" className="flex items-center gap-1 hover:text-primary transition">
           <MessagesSquareIcon size={20} /> message
         </Link>
         <ThemeSelector />
@@ -73,4 +74,3 @@ window.location.href = "/login";
 };
 
 export default Navbar;
-

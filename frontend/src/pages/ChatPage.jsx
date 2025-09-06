@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { currentUser, connectedUsers, fetchMessages, deleteMessage, updateMessage } from "../utils/api";
 import Navbar from "../components/Navbar";
 import { useThemeStore } from "../store/useThemeStore";
@@ -8,9 +9,13 @@ import { Smile, Send, Edit, Trash2, X, Check, Reply, ImageIcon, VideoIcon, FileI
 import GiphyPicker from "../components/GiphyPicker";
 import { useDebounce } from "react-use"; 
 import RecordingAnimation from "../components/RecordiingAnimation";
+import toast from "react-hot-toast";
 
 function ChatPage() {
   const { theme } = useThemeStore();
+  const { id } = useParams(); // Get the user ID from URL params
+  const [searchParams] = useSearchParams();
+  const userIdFromQuery = searchParams.get("userId"); // Alternative: get from query params
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const { connectSocket, messages, sendMessage, setMessages } = useChatStore();
@@ -31,6 +36,7 @@ function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [audioPreview, setAudioPreview] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const audioChunksRef = useRef([]);
   const emojiPickerRef = useRef(null);
   const giphyPickerRef = useRef(null);
@@ -43,18 +49,39 @@ function ChatPage() {
   useEffect(() => {
     const init = async () => {
       try {
+        setIsInitializing(true);
         const me = await currentUser();
         setUser(me);
         connectSocket(me.id);
 
         const conn = await connectedUsers();
         setConnections(conn);
+        
+        // Determine which user ID to use (from params or query)
+        const targetUserId = id || userIdFromQuery;
+        
+        // If a user ID is provided, automatically select that chat
+        if (targetUserId) {
+          const targetUser = conn.find(user => 
+            user._id === targetUserId || user.id === targetUserId
+          );
+          
+          if (targetUser) {
+            await handleSelectChat(targetUser);
+          } else {
+            console.warn(`User with ID ${targetUserId} not found in connections`);
+            toast.error("User not found in your connections");
+          }
+        }
       } catch (err) {
         console.error("❌ Error initializing chat:", err);
+        toast.error("Failed to initialize chat");
+      } finally {
+        setIsInitializing(false);
       }
     };
     init();
-  }, [connectSocket]);
+  }, [connectSocket, id, userIdFromQuery]);
 
   useEffect(() => {
     scrollToBottom();
@@ -99,6 +126,7 @@ function ChatPage() {
       setMessages(msgs || []); 
     } catch (err) {
       console.error("❌ Could not fetch chat history", err);
+      toast.error("Failed to load messages");
       setMessages([]); 
     } finally {
       setIsLoading(false);
@@ -170,6 +198,11 @@ function ChatPage() {
   };
 
   const handleSend = async () => {
+    if (!selectedChat) {
+      toast.error("Please select a chat first");
+      return;
+    }
+    
     setIsLoading(true);
     const fileToSend = selectedFile;
     const typeToSend = fileType;
@@ -180,10 +213,8 @@ function ChatPage() {
 
     // Text
     if (newMessage.trim()) {
-   formData.append("content", newMessage.trim());
-
+      formData.append("content", newMessage.trim());
     }
-
 
     if (fileToSend) {
       if (typeof fileToSend === "string" && typeToSend === "gif") {
@@ -219,9 +250,12 @@ function ChatPage() {
         setNewMessage("");
         setSelectedFile(null);
         setFileType(null);
+        setFilePreview(null);
+        setAudioPreview(null);
       }
     } catch (err) {
       console.error("❌ Error sending message:", err);
+      toast.error("Failed to send message");
     } finally {
       setIsLoading(false);
     }
@@ -271,7 +305,7 @@ function ChatPage() {
       
     } catch (err) {
       console.error("🎤 Error starting recording:", err);
-      alert("Could not access microphone. Please check permissions.");
+      toast.error("Could not access microphone. Please check permissions.");
     }
   };
 
@@ -299,36 +333,33 @@ function ChatPage() {
   };
 
   const renderMessageContent = (msg) => {
+    if (msg.messageType === "post_share") {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urls = msg.content.match(urlRegex);
+      const postUrl = urls ? urls[0] : null;
 
- if (msg.messageType === "post_share") {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const urls = msg.content.match(urlRegex);
-  const postUrl = urls ? urls[0] : null;
+      const textContent = postUrl ? msg.content.replace(postUrl, '').trim() : msg.content;
 
-  const textContent = postUrl ? msg.content.replace(postUrl, '').trim() : msg.content;
-
-  return (
-    <div 
-      className={`border rounded-lg p-3 cursor-pointer transition-colors 
-                 bg-base-200 hover:bg-base-300 text-base-content`}
-      onClick={() => postUrl && window.open(postUrl, "_blank")}
-    >
-      <p className="text-sm text-base-content mb-2">
-        {textContent}
-      </p>
-      {postUrl && (
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-primary truncate max-w-[200px]">
-            {postUrl}
-          </span>
-          <span className="text-xs text-base-content/70">Click to view</span>
+      return (
+        <div 
+          className={`border rounded-lg p-3 cursor-pointer transition-colors 
+                     bg-base-200 hover:bg-base-300 text-base-content`}
+          onClick={() => postUrl && window.open(postUrl, "_blank")}
+        >
+          <p className="text-sm text-base-content mb-2">
+            {textContent}
+          </p>
+          {postUrl && (
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-primary truncate max-w-[200px]">
+                {postUrl}
+              </span>
+              <span className="text-xs text-base-content/70">Click to view</span>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  );
-}
-
-
+      );
+    }
 
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     if (urlRegex.test(msg.content)) {
@@ -363,8 +394,10 @@ function ChatPage() {
         await deleteMessage(messageId);  
         const msgs = await fetchMessages(selectedChat._id);
         setMessages(msgs || []);
+        toast.success("Message deleted");
       } catch (err) {
         console.error("❌ Error deleting message:", err);
+        toast.error("Failed to delete message");
       }
       setActiveMenu(null);
     }
@@ -429,27 +462,37 @@ function ChatPage() {
           </div>
 
           <div className="overflow-y-auto flex-1">
-            {connections.map((conn) => (
-              <div
-                key={conn._id}
-                className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-base-300 ${
-                  selectedChat?._id === conn._id ? "bg-base-300" : ""
-                }`}
-                onClick={() => handleSelectChat(conn)}
-              >
-                <div className="avatar">
-                  <div className="w-12 h-12 rounded-full">
-                    <img src={conn.profilePic} alt={conn.name} />
+            {isInitializing ? (
+              <div className="flex justify-center items-center h-32">
+                <div className="loading loading-spinner loading-lg"></div>
+              </div>
+            ) : connections.length > 0 ? (
+              connections.map((conn) => (
+                <div
+                  key={conn._id}
+                  className={`flex items-center gap-3 p-3 cursor-pointer hover:bg-base-300 ${
+                    selectedChat?._id === conn._id ? "bg-base-300" : ""
+                  }`}
+                  onClick={() => handleSelectChat(conn)}
+                >
+                  <div className="avatar">
+                    <div className="w-12 h-12 rounded-full">
+                      <img src={conn.profilePic} alt={conn.name} />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-base-content truncate">{conn.name}</h4>
+                    <p className="text-sm text-base-content/70 truncate">
+                      {conn.lastMessage || "Start chatting"}
+                    </p>
                   </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-semibold text-base-content truncate">{conn.name}</h4>
-                  <p className="text-sm text-base-content/70 truncate">
-                    {conn.lastMessage || "Start chatting"}
-                  </p>
-                </div>
+              ))
+            ) : (
+              <div className="text-center text-base-content/70 py-8">
+                No connections found
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -788,7 +831,11 @@ function ChatPage() {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-base-content/70 bg-base-100">
-              Select a conversation to start chatting
+              {isInitializing ? (
+                <div className="loading loading-spinner loading-lg"></div>
+              ) : (
+                "Select a conversation to start chatting"
+              )}
             </div>
           )}
         </div>
