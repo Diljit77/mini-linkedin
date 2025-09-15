@@ -1,4 +1,3 @@
-// components/GiphyPicker.jsx
 import React, { useState, useEffect } from "react";
 import { Grid } from "@giphy/react-components";
 import { GiphyFetch } from "@giphy/js-fetch-api";
@@ -28,8 +27,8 @@ export default function GiphyPicker({ onGifSelect, searchTerm }) {
   };
 
   return (
-    <div id="giphy-picker" style={{ width: "100%", maxWidth: 350, height: 350 }}>
-      <Grid
+    < div id="giphy-picker" style={{ width: "100%", maxWidth: 350, height: 350 }}>
+     <Grid
         key={searchTerm || "trending"}
         fetchGifs={fetchGifs}
         width={width}

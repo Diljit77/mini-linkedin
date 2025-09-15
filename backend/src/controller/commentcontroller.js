@@ -2,6 +2,7 @@
 import Notification from "../models/Notificationmodel.js";
 import Post from "../models/Postmodel.js";
 import Comment from "../models/commentmodel.js";
+import { createNotification } from "../utils/Notification.js";
 
 
 export const addComment = async (req, res) => {
@@ -53,31 +54,30 @@ if (!parentCommentId) {
 
 
     await comment.populate("author", "name profilePic username");
- 
-    if (post.author.toString() !== userId.toString()) {
-      await Notification.create({
-        recipient: post.author,
-        sender: userId,
-        type: parentCommentId ? 'reply' : 'comment',
-        post: postId,
-        comment: comment._id,
-        message: parentCommentId 
-          ? `${req.user.name} replied to your comment` 
-          : `${req.user.name} commented on your post`
-      });
-    }
 
+if (post.author.toString() !== userId.toString()) {
+  await createNotification({
+    recipient: post.author,
+    sender: userId,
+    type: parentCommentId ? 'reply' : 'comment',
+    post: postId,
+    comment: comment._id,
+    message: parentCommentId 
+      ? `${req.user.name} replied to your comment` 
+      : `${req.user.name} commented on your post`
+  });
+}
 
-    if (parentCommentId && parentComment && parentComment.author.toString() !== userId.toString()) {
-      await Notification.create({
-        recipient: parentComment.author,
-        sender: userId,
-        type: 'reply',
-        post: postId,
-        comment: comment._id,
-        message: `${req.user.name} replied to your comment`
-      });
-    }
+if (parentCommentId && parentComment && parentComment.author.toString() !== userId.toString()) {
+  await createNotification({
+    recipient: parentComment.author,
+    sender: userId,
+    type: 'reply',
+    post: postId,
+    comment: comment._id,
+    message: `${req.user.name} replied to your comment`
+  });
+}
 
     res.status(201).json({ 
       success: true, 
@@ -133,7 +133,7 @@ export const getComments = async (req, res) => {
   }
 };
 
-// Like/unlike a comment
+
 export const toggleLikeComment = async (req, res) => {
   try {
     const { commentId } = req.params;

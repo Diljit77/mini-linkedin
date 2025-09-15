@@ -11,7 +11,7 @@ import connectionRoutes from "./routes/connectionroutes.js";
 import commentRoutes from "./routes/commentroutes.js";
 import { initSocket } from "./utils/socket.js";
 import messageRoutes from "./routes/messageroutes.js";
-
+import notifcationROutes from "./routes/notificationroutes.js"; 
 dotenv.config();
 connectDB();
 
@@ -31,7 +31,7 @@ app.use("/api/posts", postRoutes);
 app.use("/api/connections", connectionRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/comments", commentRoutes);
-
+app.use("/api/notifications", notifcationROutes);
 const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);

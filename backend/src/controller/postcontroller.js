@@ -5,6 +5,7 @@ import User from "../models/UserModel.js";
 import { uploadImageBufferToCloudinary } from "../utils/upload.js";
 import Message from "../models/messageModel.js";
 import Notification from "../models/Notificationmodel.js";
+import { createNotification } from "../utils/Notification.js";
 
 
 
@@ -19,7 +20,7 @@ export const createPost = async (req, res) => {
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
         const imageUrl = await uploadImageBufferToCloudinary(file.buffer); // ✅ use buffer
-        imageUrls.push(imageUrl);
+   imageUrls.push(imageUrl.secure_url); 
       }
     }
 
@@ -193,10 +194,16 @@ export const deletePost = async (req, res) => {
 
 
 
+
 export const toggleLike = async (req, res) => {
   try {
     const { postId } = req.params;
     const userId = req.user._id; 
+
+    const post = await Post.findById(postId).populate("author", "_id");
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
 
     const existingLike = await Like.findOne({ post: postId, user: userId });
 
@@ -209,6 +216,18 @@ export const toggleLike = async (req, res) => {
       // Like
       await Like.create({ post: postId, user: userId });
       await Post.findByIdAndUpdate(postId, { $inc: { likeCount: 1 } });
+
+      // Send notification if the post author is not the current user
+      if (post.author._id.toString() !== userId.toString()) {
+        await createNotification({
+          recipient: post.author._id,
+          sender: userId,
+          type: "like",
+          post: postId,
+          message: `${req.user.name} liked your post`
+        });
+      }
+      
       return res.status(200).json({ message: "Post liked" });
     }
   } catch (error) {

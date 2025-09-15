@@ -373,3 +373,55 @@ export const getPostShareStats = async (postId) => {
     throw error;
   }
 };
+// Notification APIs
+export const getNotifications = async (page = 1, limit = 20) => {
+  try {
+    const res = await AxiosInstance.get(`/api/notifications`, {
+      params: { page, limit }
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching notifications:", error);
+    throw error;
+  }
+};
+
+export const markNotificationAsRead = async (notificationId) => {
+  try {
+    const res = await AxiosInstance.put(`/api/notifications/${notificationId}/read`);
+    return res.data;
+  } catch (error) {
+    console.error("Error marking notification as read:", error);
+    throw error;
+  }
+};
+
+export const markAllNotificationsAsRead = async () => {
+  try {
+    const res = await AxiosInstance.put(`/api/notifications/read-all`);
+    return res.data;
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+    throw error;
+  }
+};
+
+export const getUnreadCount = async () => {
+  try {
+    const res = await AxiosInstance.get(`/api/notifications/unread-count`);
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching unread count:", error);
+    throw error;
+  }
+};
+
+export const deleteNotification = async (notificationId) => {
+  try {
+    const res = await AxiosInstance.delete(`/api/notifications/${notificationId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Error deleting notification:", error);
+    throw error;
+  }
+};

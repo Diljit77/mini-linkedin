@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const postSchema = new mongoose.Schema(
@@ -14,11 +13,10 @@ const postSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    image:[ {
+    image: [{
       type: String,
       default: null
-    }
-  ],
+    }],
     video: {
       type: String,
       default: null
@@ -38,12 +36,8 @@ const postSchema = new mongoose.Schema(
     isEdited: {
       type: Boolean,
       default: false
-    },
-        shares: {
-      type: Number,
-      default: 0
-    },
-
+    }
+    // ✅ Removed the duplicate 'shares' field
   },
   { 
     timestamps: true,
@@ -52,12 +46,13 @@ const postSchema = new mongoose.Schema(
   }
 );
 
+// Also add null checks to your virtual fields to prevent future errors
 postSchema.virtual('likeCount').get(function() {
-  return this.likes.length;
+  return this.likes ? this.likes.length : 0;
 });
 
 postSchema.virtual('commentCount').get(function() {
-  return this.comments.length;
+  return this.comments ? this.comments.length : 0;
 });
 
 postSchema.index({ author: 1 });

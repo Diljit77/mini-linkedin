@@ -1,7 +1,8 @@
 import ConnectionRequest from "../models/connectonreuqestmodel.js";
 import User from "../models/UserModel.js";
+import { createNotification } from "../utils/Notification.js";
 
-// 1. Send connection request
+
 export const sendConnectionRequest = async (req, res) => {
   try {
     const senderId = req.user._id;
@@ -11,7 +12,6 @@ export const sendConnectionRequest = async (req, res) => {
       return res.status(400).json({ message: "You can't connect with yourself" });
     }
 
-    // Check if request already exists (both ways)
     const existingRequest = await ConnectionRequest.findOne({
       $or: [
         { sender: senderId, receiver: receiverId },
@@ -23,6 +23,13 @@ export const sendConnectionRequest = async (req, res) => {
       return res.status(400).json({ message: "Connection request already exists" });
     }
 
+        await createNotification({
+      recipient: receiverId,
+      sender: senderId,
+      type: "connection",
+      message: `${req.user.name} sent you a connection request`
+    });
+
     const newRequest = await ConnectionRequest.create({
       sender: senderId,
       receiver: receiverId,
@@ -30,6 +37,7 @@ export const sendConnectionRequest = async (req, res) => {
 
     res.status(201).json({ message: "Connection request sent", data: newRequest });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
@@ -61,6 +69,7 @@ export const acceptConnectionRequest = async (req, res) => {
 
     res.status(200).json({ message: "Connection accepted" });
   } catch (error) {
+        console.log(error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
@@ -82,11 +91,12 @@ if(!delelte) return res.status(404).json({ message: "Request not found" });
    return res.status(200).json({ message: "Connection request rejected" });
  
   } catch (error) {
+        console.log(error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
-// 4. Get all pending requests for user
+
 export const getPendingRequests = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -109,8 +119,10 @@ export const getSentRequests = async (req, res) => {
       sender: userId,
     }).populate("receiver", "name email profilePic");
 
+
     res.status(200).json({ requests });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
@@ -141,6 +153,7 @@ export const getAcceptedConnections = async (req, res) => {
 
     res.status(200).json({ connections: user.connections });
   } catch (error) {
+        console.log(error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };

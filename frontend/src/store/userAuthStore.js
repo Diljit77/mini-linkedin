@@ -1,6 +1,6 @@
 
 import { create } from "zustand";
-import { currentUser } from "../utils/api"; // ✅ your API call to /api/auth/me
+import { currentUser } from "../utils/api"; 
 
 export const useAuthStore = create((set) => {
   const storedUser = localStorage.getItem("user");
@@ -18,7 +18,7 @@ export const useAuthStore = create((set) => {
 
     refreshUser: async () => {
       try {
-        const data = await currentUser(); // ✅ call backend
+        const data = await currentUser(); 
         localStorage.setItem("user", JSON.stringify(data));
         set({ user: data });
         return data;
